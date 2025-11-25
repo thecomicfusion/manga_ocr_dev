@@ -12,9 +12,9 @@ import numpy as np
 from manga_ocr_dev.env import ASSETS_PATH
 
 # Create a reasonable distribution (bell curve centered around 10)
-lengths = np.arange(1, 31)
+lengths = np.arange(1, 36)
 # Normal distribution-like probabilities
-probs = np.exp(-0.5 * ((lengths - 10) / 5) ** 2)
+probs = np.exp(-0.5 * ((lengths - 18) / 8) ** 2)
 probs = probs / probs.sum()  # Normalize to sum to 1
 
 df = pd.DataFrame({'len': lengths, 'p': probs})

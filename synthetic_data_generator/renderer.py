@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 from html2image import Html2Image
 
-from manga_ocr_dev.env import BACKGROUND_DIR
+from manga_ocr_dev.env import BACKGROUND_DIR, VERTICAL_TEXT_PROBABILITY
 from manga_ocr_dev.synthetic_data_generator.utils import get_background_df
 
 
@@ -134,7 +134,7 @@ class Renderer:
     def get_random_css_params(self, font_path=None):
         params = {
             "font_size": 48,
-            "vertical": True if np.random.rand() < 0.7 else False,
+            "vertical": True if np.random.rand() < VERTICAL_TEXT_PROBABILITY else False,
             "line_height": 0.5,
             "background_color": "transparent",
             "text_color": "black",
