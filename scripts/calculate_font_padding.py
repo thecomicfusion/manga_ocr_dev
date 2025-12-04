@@ -38,15 +38,18 @@ def calculate_font_padding(font_path, test_char="あ", font_size=48):
 
 
 def main():
-    from manga_ocr_dev.env import ASSETS_PATH, FONTS_ROOT
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from env import ASSETS_PATH, FONTS_ROOT
 
     # Read existing fonts.csv
-    fonts_df = pd.read_csv("assets_zh/fonts.csv")
+    fonts_df = pd.read_csv(f"{ASSETS_PATH}/fonts.csv")
 
     # Calculate padding for each font
     padding_values = []
     for _, row in fonts_df.iterrows():
-        font_path = str("assets_zh/ko_font/" + row.font_path)
+        font_path = str(FONTS_ROOT / row.font_path)
         padding = calculate_font_padding(font_path)
         padding_values.append(padding)
         print(f"{row.font_path}: padding_ratio={padding:.3f}")
@@ -55,7 +58,7 @@ def main():
     fonts_df['padding_ratio'] = padding_values
 
     # IMPORTANT: Explicitly specify column order when saving
-    fonts_df.to_csv("assets_zh/fonts.csv",
+    fonts_df.to_csv(f"{ASSETS_PATH}/fonts.csv",
                     columns=['font_path', 'supported_chars',
                              'num_chars', 'label', 'padding_ratio'],
                     index=False)
