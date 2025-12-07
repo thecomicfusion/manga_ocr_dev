@@ -1,3 +1,9 @@
+from tqdm.contrib.concurrent import process_map
+from PIL import ImageDraw, ImageFont
+from fontTools.ttLib import TTFont
+import pandas as pd
+import numpy as np
+import PIL
 import sys
 from pathlib import Path
 
@@ -7,13 +13,7 @@ if str(parent_dir) not in sys.path:
     sys.path.insert(0, str(parent_dir))
 
 
-import PIL
-import numpy as np
-import pandas as pd
-from fontTools.ttLib import TTFont
-from PIL import ImageDraw, ImageFont
-from tqdm.contrib.concurrent import process_map
-from manga_ocr_dev.env import ASSETS_PATH, FONTS_ROOT
+from manga_ocr_dev.env import ASSETS_PATH, FONTS_ROOT  # noqa: E402
 
 print(ASSETS_PATH)
 vocab = pd.read_csv(ASSETS_PATH / "ko_vocab.csv").char.values
@@ -68,8 +68,9 @@ def main():
     out_path = ASSETS_PATH / "fonts.csv"
 
     suffixes = {".TTF", ".otf", ".ttc", ".ttf"}
-    font_paths = [path for path in path_in.glob("**/*") if path.suffix in suffixes]
-    
+    font_paths = [path for path in path_in.glob(
+        "**/*") if path.suffix in suffixes]
+
     if not font_paths:
         print(f"No font files found in {path_in}")
         return
@@ -83,6 +84,7 @@ def main():
     data["num_chars"] = data.supported_chars.str.len()
     data["label"] = "regular"
     data.to_csv(out_path, index=False)
+
 
 if __name__ == "__main__":
     main()

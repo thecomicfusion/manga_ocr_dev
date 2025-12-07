@@ -1,6 +1,6 @@
 from pathlib import Path
 
-ASSETS_PATH = Path(__file__).parent / "assets_ko"
+ASSETS_PATH = Path(__file__).parent / "assets_zh"
 
 VERTICAL_TEXT_PROBABILITY = 0.5
 FONTS_ROOT = Path(f"{ASSETS_PATH}/ko_font").expanduser()

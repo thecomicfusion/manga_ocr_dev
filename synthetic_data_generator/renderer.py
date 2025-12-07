@@ -17,20 +17,19 @@ class Renderer:
         self.temp_dir = (Path(__file__).parent / "html2image_tmp").resolve()
         self.temp_dir.mkdir(parents=True, exist_ok=True)
 
-          
         self.hti = Html2Image(
             output_path=self.temp_dir,
             browser_executable='/usr/bin/chromium-browser',  # or 'google-chrome', 'firefox'
         )
         self.background_df = get_background_df(BACKGROUND_DIR)
         self.max_size = 600
-        
+
         # Load font padding metadata
         from manga_ocr_dev.env import ASSETS_PATH
         import pandas as pd
         fonts_df = pd.read_csv(ASSETS_PATH / "fonts.csv")
         # Create lookup: font_path -> padding_ratio
-        self.font_padding_map = dict(zip(fonts_df.font_path, 
+        self.font_padding_map = dict(zip(fonts_df.font_path,
                                          fonts_df.get('padding_ratio', 0.0)))
 
     def render(self, lines, override_css_params=None):
@@ -47,7 +46,8 @@ class Renderer:
 
     def render_text(self, lines, override_css_params=None):
         """Render text on transparent background and return as BGRA image."""
-        font_path = override_css_params.get("font_path") if override_css_params else None
+        font_path = override_css_params.get(
+            "font_path") if override_css_params else None
 
         params = self.get_random_css_params(font_path)
         if override_css_params:
@@ -139,22 +139,23 @@ class Renderer:
             "background_color": "transparent",
             "text_color": "black",
         }
-        
+
         if font_path and self.font_padding_map:
             # Extract just the filename from font_path for lookup
             from pathlib import Path
             font_name = Path(font_path).name
             padding_ratio = self.font_padding_map.get(font_name, 0.0)
-            
+
             # For vertical text, use letter-spacing to control character spacing
             # For horizontal text, line-height controls line spacing
             if params["vertical"]:
                 # If font has little padding in vertical mode, increase letter spacing
                 if padding_ratio == 0:
-                    params["letter_spacing"] = 0.1  # Add space between vertically stacked chars
+                    # Add space between vertically stacked chars
+                    params["letter_spacing"] = 0.1
                 else:
                     params["letter_spacing"] = 0.0  # Normal spacing
-            
+
         else:
             # Default fallback
             if params["vertical"]:
@@ -166,20 +167,22 @@ class Renderer:
             # Randomly choose alignment for horizontal text
             # More weight on left/center as they're more common in Korean comics
             params["text_align"] = np.random.choice(
-                ["left", "center", "right"], 
+                ["left", "center", "right"],
                 p=[0.4, 0.5, 0.1]  # 40% left, 50% center, 10% right
             )
 
         if np.random.rand() < 0.7:
             params["text_orientation"] = "upright"
 
-        stroke_variant = np.random.choice(["stroke", "shadow", "none"], p=[0.8, 0.15, 0.05])
+        stroke_variant = np.random.choice(
+            ["stroke", "shadow", "none"], p=[0.8, 0.15, 0.05])
         if stroke_variant == "stroke":
             params["stroke_size"] = np.random.choice([1, 2, 3, 4, 8])
             params["stroke_color"] = "white"
         elif stroke_variant == "shadow":
             params["shadow_size"] = np.random.choice([2, 5, 10])
-            params["shadow_color"] = ("white" if np.random.rand() < 0.8 else "black",)
+            params["shadow_color"] = (
+                "white" if np.random.rand() < 0.8 else "black",)
         elif stroke_variant == "none":
             pass
 
@@ -204,9 +207,11 @@ class Renderer:
         t = [
             A.HorizontalFlip(),
             A.RandomRotate90(),
-            A.InvertImg(),
+            # A.InvertImg(),
             # Reduce the darkness - change contrast range to avoid too dark backgrounds
-            A.RandomBrightnessContrast((-0.2, 0.4), (-0.5, 0.2), p=0.5 if draw_bubble else 1),  # Changed from (-0.8, -0.3)
+            # Changed from (-0.8, -0.3)
+            A.RandomBrightnessContrast(
+                (-0.2, 0.4), (-0.5, 0.2), p=0.5 if draw_bubble else 1),
             A.Blur((3, 5), p=0.3),
             A.Resize(img.shape[0], img.shape[1]),
         ]
@@ -225,9 +230,11 @@ class Renderer:
             sigma = np.random.randint(10, 15)
 
             ymin = m0 - int(min(img.shape[:2]) * np.random.uniform(0.07, 0.12))
-            ymax = img.shape[0] - m0 + int(min(img.shape[:2]) * np.random.uniform(0.07, 0.12))
+            ymax = img.shape[0] - m0 + \
+                int(min(img.shape[:2]) * np.random.uniform(0.07, 0.12))
             xmin = m0 - int(min(img.shape[:2]) * np.random.uniform(0.07, 0.12))
-            xmax = img.shape[1] - m0 + int(min(img.shape[:2]) * np.random.uniform(0.07, 0.12))
+            xmax = img.shape[1] - m0 + \
+                int(min(img.shape[:2]) * np.random.uniform(0.07, 0.12))
 
             bubble_fill_color = (255, 255, 255, 255)
             bubble_contour_color = (0, 0, 0, 255)
@@ -250,7 +257,8 @@ class Renderer:
             )
 
             t = [
-                A.ElasticTransform(alpha=alpha, sigma=sigma, alpha_affine=0, p=0.8),
+                A.ElasticTransform(alpha=alpha, sigma=sigma,
+                                   alpha_affine=0, p=0.8),
             ]
             bubble = A.Compose(t)(image=bubble)["image"]
 
@@ -259,9 +267,11 @@ class Renderer:
         img = blend(img, background)
 
         ymin = m0 - int(min(img.shape[:2]) * np.random.uniform(0.01, 0.2))
-        ymax = img.shape[0] - m0 + int(min(img.shape[:2]) * np.random.uniform(0.01, 0.2))
+        ymax = img.shape[0] - m0 + \
+            int(min(img.shape[:2]) * np.random.uniform(0.01, 0.2))
         xmin = m0 - int(min(img.shape[:2]) * np.random.uniform(0.01, 0.2))
-        xmax = img.shape[1] - m0 + int(min(img.shape[:2]) * np.random.uniform(0.01, 0.2))
+        xmax = img.shape[1] - m0 + \
+            int(min(img.shape[:2]) * np.random.uniform(0.01, 0.2))
         img = img[ymin:ymax, xmin:xmax]
         return img
 
@@ -327,7 +337,8 @@ def rounded_rectangle(src, top_left, bottom_right, radius=1, color=255, thicknes
             [top_left_rect_right, bottom_right_rect_right],
         ]
 
-        [cv2.rectangle(src, rect[0], rect[1], color, thickness) for rect in all_rects]
+        [cv2.rectangle(src, rect[0], rect[1], color, thickness)
+         for rect in all_rects]
 
     # draw straight lines
     cv2.line(
@@ -441,7 +452,7 @@ def get_css(
 
     if vertical:
         styles.append("writing-mode: vertical-rl;")
-    
+
     # Add text-align for horizontal text
     if text_align and not vertical:
         styles.append(f"text-align: {text_align};")
@@ -453,7 +464,9 @@ def get_css(
         # stroke is simulated by shadow overlaid multiple times
         styles.extend(
             [
-                "text-shadow: " + ",".join([f"0 0 {stroke_size}px {stroke_color}"] * 10 * stroke_size) + ";",
+                "text-shadow: " +
+                ",".join([f"0 0 {stroke_size}px {stroke_color}"]
+                         * 10 * stroke_size) + ";",
                 "-webkit-font-smoothing: antialiased;",
             ]
         )
@@ -465,6 +478,7 @@ def get_css(
 
     styles_str = "\n".join(styles)
     css = ""
-    css += '\n@font-face {\nfont-family: custom;\nsrc: url("' + font_path + '");\n}\n'
+    css += '\n@font-face {\nfont-family: custom;\nsrc: url("' + \
+        font_path + '");\n}\n'
     css += "body {\n" + styles_str + "\n}"
     return css

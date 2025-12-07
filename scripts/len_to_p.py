@@ -1,3 +1,5 @@
+import numpy as np
+import pandas as pd
 import sys
 from pathlib import Path
 
@@ -7,14 +9,12 @@ if str(parent_dir) not in sys.path:
     sys.path.insert(0, str(parent_dir))
 
 
-import pandas as pd
-import numpy as np
-from manga_ocr_dev.env import ASSETS_PATH
+from manga_ocr_dev.env import ASSETS_PATH  # noqa: E402
 
-# Create a reasonable distribution (bell curve centered around 10)
-lengths = np.arange(1, 36)
+
+lengths = np.arange(1, 31)
 # Normal distribution-like probabilities
-probs = np.exp(-0.5 * ((lengths - 18) / 8) ** 2)
+probs = np.exp(-0.5 * ((lengths - 10) / 5) ** 2)
 probs = probs / probs.sum()  # Normalize to sum to 1
 
 df = pd.DataFrame({'len': lengths, 'p': probs})
