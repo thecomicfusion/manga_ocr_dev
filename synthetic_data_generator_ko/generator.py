@@ -175,8 +175,11 @@ class KoreanSyntheticDataGenerator:
         max_num_lines = 10
         min_line_len = max(1, len(text) // max_num_lines)
         max_line_len_cap = 25
+        
+        # Randomize line length distribution for variety
+        poisson_mean = np.random.choice([4, 5, 6, 7, 8])
         max_line_len = int(
-            np.clip(np.random.poisson(8), min_line_len, max_line_len_cap)
+            np.clip(np.random.poisson(poisson_mean), min_line_len, max_line_len_cap)
         )
 
         lines: list[str] = []
