@@ -9,4 +9,4 @@ BACKGROUND_DIR = Path(f"{ASSETS_PATH}/ko_background").expanduser()
 TRAIN_ROOT = Path(f"{ASSETS_PATH}/ko_out").expanduser()
 
 # Force generation of only 3-4 line images (for targeted training)
-FORCE_3_4_LINES = True  # Set to False for normal mixed generation
+FORCE_3_4_LINES = False  # Set to False for normal mixed generation
