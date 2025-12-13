@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from manga_ocr_dev.env import ASSETS_PATH, FONTS_ROOT
+from manga_ocr_dev.env import ASSETS_PATH, FONTS_ROOT, FORCE_3_4_LINES
 from manga_ocr_dev.synthetic_data_generator.renderer import Renderer
 from manga_ocr_dev.synthetic_data_generator.utils import get_font_meta
 
@@ -172,15 +172,30 @@ class KoreanSyntheticDataGenerator:
         if not text:
             return [""]
 
-        max_num_lines = 10
-        min_line_len = max(1, len(text) // max_num_lines)
-        max_line_len_cap = 25
-        
-        # Randomize line length distribution for variety
-        poisson_mean = np.random.choice([4, 5, 6, 7, 8])
-        max_line_len = int(
-            np.clip(np.random.poisson(poisson_mean), min_line_len, max_line_len_cap)
-        )
+        if FORCE_3_4_LINES:
+            # FORCE 3 or 4 lines for targeted training
+            target_num_lines = np.random.choice([3, 4])  # 50/50 split
+            
+            # Calculate line length to achieve target number of lines
+            target_line_len = max(3, len(text) // target_num_lines)
+            max_line_len_cap = max(target_line_len + 5, len(text) // 2)
+            
+            # Add some randomness around the target
+            poisson_mean = np.random.choice([4, 5, 6, 7, 8])
+            max_line_len = int(
+                np.clip(np.random.poisson(poisson_mean), target_line_len, max_line_len_cap)
+            )
+        else:
+            # Normal mode: natural line distribution
+            max_num_lines = 10
+            min_line_len = max(1, len(text) // max_num_lines)
+            max_line_len_cap = 25
+            
+            # Randomize line length distribution for variety
+            poisson_mean = np.random.choice([4, 5, 6, 7, 8])
+            max_line_len = int(
+                np.clip(np.random.poisson(poisson_mean), min_line_len, max_line_len_cap)
+            )
 
         lines: list[str] = []
         line = ""
@@ -191,6 +206,19 @@ class KoreanSyntheticDataGenerator:
             line += word
         if line:
             lines.append(line)
+
+        if FORCE_3_4_LINES:
+            # Validate: if we didn't get 3-4 lines, adjust
+            if len(lines) < 3:
+                # Text too short, split longest line
+                while len(lines) < 3 and any(len(l) > 5 for l in lines):
+                    longest_idx = max(range(len(lines)), key=lambda i: len(lines[i]))
+                    long_line = lines[longest_idx]
+                    mid = len(long_line) // 2
+                    lines[longest_idx:longest_idx+1] = [long_line[:mid], long_line[mid:]]
+            
+            # Keep only first 4 lines if more than 4
+            return lines[:4]
 
         return lines
 

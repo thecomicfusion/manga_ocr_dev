@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 from html2image import Html2Image
 
-from manga_ocr_dev.env import BACKGROUND_DIR, VERTICAL_TEXT_PROBABILITY
+from manga_ocr_dev.env import BACKGROUND_DIR, VERTICAL_TEXT_PROBABILITY, FORCE_3_4_LINES
 from manga_ocr_dev.synthetic_data_generator.utils import get_background_df
 
 
@@ -135,10 +135,20 @@ class Renderer:
         params = {
             "font_size": 48,
             "vertical": True if np.random.rand() < VERTICAL_TEXT_PROBABILITY else False,
-            "line_height": 0.5,
             "background_color": "transparent",
             "text_color": "black",
         }
+
+        # Randomize line spacing when forcing 3-4 lines
+        if FORCE_3_4_LINES:
+            # Vary between closer (0.1) and normal (0.5)
+            params["line_height"] = np.random.choice(
+                [0.2, 0.3, 0.4, 0.5],
+                p=[0.4, 0.3, 0.2, 0.1]  # Favor 0.2-0.5
+            )
+        else:
+            # Default spacing
+            params["line_height"] = 0.5
 
         if font_path and self.font_padding_map:
             # Extract just the filename from font_path for lookup
