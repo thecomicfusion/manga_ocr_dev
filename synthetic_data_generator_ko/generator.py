@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from manga_ocr_dev.env import ASSETS_PATH, FONTS_ROOT, FORCE_3_4_LINES
+from manga_ocr_dev.env import ASSETS_PATH, FONTS_ROOT, FORCE_3_4_LINES, USE_RANDOM_VOCAB, SENTENCES_FILE
 from manga_ocr_dev.synthetic_data_generator.renderer import Renderer
 from manga_ocr_dev.synthetic_data_generator.utils import get_font_meta
 
@@ -20,7 +20,8 @@ def _default_korean_vocab():
     hangul_end = 0xD7A3
     hangul_chars = [chr(cp) for cp in range(hangul_start, hangul_end + 1)]
 
-    ascii_chars = list("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    ascii_chars = list(
+        "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
     punctuation = list(" .,!?-…“”‘’\"'()[]:;")
     return np.array(hangul_chars + ascii_chars + punctuation)
 
@@ -53,6 +54,17 @@ class KoreanSyntheticDataGenerator:
 
         self.vocab = np.array(vocab)
 
+        # Load sentences file if USE_RANDOM_VOCAB is False
+        self.sentences = None
+        if not USE_RANDOM_VOCAB and SENTENCES_FILE.exists():
+            with open(SENTENCES_FILE, "r", encoding="utf-8") as f:
+                self.sentences = [line.strip() for line in f if line.strip()]
+            print(
+                f"Loaded {len(self.sentences)} sentences from {SENTENCES_FILE}")
+        elif not USE_RANDOM_VOCAB:
+            print(
+                f"Warning: USE_RANDOM_VOCAB is False but {SENTENCES_FILE} not found. Falling back to random vocab.")
+
         # Font metadata is language-agnostic; you should generate fonts.csv with Korean fonts.
         self.fonts_df, self.font_map = get_font_meta()
         self.font_labels, self.font_p = self._get_font_labels_prob()
@@ -65,8 +77,9 @@ class KoreanSyntheticDataGenerator:
         """
         Generate (image, normalized_text, css_params) triple.
 
-        If `text` is None, random Korean text is generated using only characters
-        supported by the randomly selected font.
+        If `text` is None:
+        - If USE_RANDOM_VOCAB is False and sentences are loaded, pick a random sentence
+        - Otherwise, generate random text using vocab characters
         """
         if override_css_params is None:
             override_css_params = {}
@@ -82,10 +95,17 @@ class KoreanSyntheticDataGenerator:
                 font_path = override_css_params["font_path"]
                 vocab = self.font_map.get(font_path, set(self.vocab))
 
-            words = self._get_random_words(vocab)
+            # Use real sentences if available, otherwise generate random words
+            if self.sentences is not None:
+                # Pick a random sentence and split into words
+                sentence = np.random.choice(self.sentences)
+                words = self._split_into_words(sentence)
+            else:
+                words = self._get_random_words(vocab)
         else:
             # Basic normalization (keep it language-agnostic).
-            text = text.replace("\u3000", " ")  # full-width space -> normal space
+            # full-width space -> normal space
+            text = text.replace("\u3000", " ")
             text = text.replace("…", "...")  # ellipsis variant
             words = self._split_into_words(text)
 
@@ -101,7 +121,8 @@ class KoreanSyntheticDataGenerator:
             vocab = self.font_map.get(font_path, set(self.vocab))
 
             # Remove characters unsupported by the chosen font.
-            lines = ["".join([c for c in line if c in vocab or c.isspace()]) for line in lines]
+            lines = ["".join([c for c in line if c in vocab or c.isspace()])
+                     for line in lines]
             text_gt = "\n".join(lines)
 
         img, params = self.renderer.render(lines, override_css_params)
@@ -175,26 +196,28 @@ class KoreanSyntheticDataGenerator:
         if FORCE_3_4_LINES:
             # FORCE 3 or 4 lines for targeted training
             target_num_lines = np.random.choice([3, 4])  # 50/50 split
-            
+
             # Calculate line length to achieve target number of lines
             target_line_len = max(3, len(text) // target_num_lines)
             max_line_len_cap = max(target_line_len + 5, len(text) // 2)
-            
+
             # Add some randomness around the target
             poisson_mean = np.random.choice([4, 5, 6, 7, 8])
             max_line_len = int(
-                np.clip(np.random.poisson(poisson_mean), target_line_len, max_line_len_cap)
+                np.clip(np.random.poisson(poisson_mean),
+                        target_line_len, max_line_len_cap)
             )
         else:
             # Normal mode: natural line distribution
             max_num_lines = 10
             min_line_len = max(1, len(text) // max_num_lines)
             max_line_len_cap = 25
-            
+
             # Randomize line length distribution for variety
             poisson_mean = np.random.choice([4, 5, 6, 7, 8])
             max_line_len = int(
-                np.clip(np.random.poisson(poisson_mean), min_line_len, max_line_len_cap)
+                np.clip(np.random.poisson(poisson_mean),
+                        min_line_len, max_line_len_cap)
             )
 
         lines: list[str] = []
@@ -212,11 +235,13 @@ class KoreanSyntheticDataGenerator:
             if len(lines) < 3:
                 # Text too short, split longest line
                 while len(lines) < 3 and any(len(l) > 5 for l in lines):
-                    longest_idx = max(range(len(lines)), key=lambda i: len(lines[i]))
+                    longest_idx = max(range(len(lines)),
+                                      key=lambda i: len(lines[i]))
                     long_line = lines[longest_idx]
                     mid = len(long_line) // 2
-                    lines[longest_idx:longest_idx+1] = [long_line[:mid], long_line[mid:]]
-            
+                    lines[longest_idx:longest_idx +
+                          1] = [long_line[:mid], long_line[mid:]]
+
             # Keep only first 4 lines if more than 4
             return lines[:4]
 
@@ -253,11 +278,10 @@ class KoreanSyntheticDataGenerator:
         if text is None:
             return df.sample(1).iloc[0].font_path
 
-        valid_mask = df.font_path.apply(lambda x: self._is_font_supporting_text(x, text))
+        valid_mask = df.font_path.apply(
+            lambda x: self._is_font_supporting_text(x, text))
         if not valid_mask.any():
             # If text contains characters not supported by any font, pick fonts with many supported chars.
             valid_mask = df.num_chars >= df.num_chars.quantile(0.75)
 
         return str(FONTS_ROOT / df[valid_mask].sample(1).iloc[0].font_path)
-
-
